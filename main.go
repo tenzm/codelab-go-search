@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"strconv"
 )
 
 var (
 	recursiveFlag = flag.Bool("r", false, "recursive search: for directories")
+	lineCount = flag.Bool("n", false, "show line number")
 )
 
 type ScanResult struct {
@@ -19,7 +21,7 @@ type ScanResult struct {
 	line       string
 }
 
-func scanFile(fpath, pattern string) ([]string, error) {
+func scanFile(fpath, pattern string) ([]ScanResult, error) {
 	f, err := os.Open(fpath)
 	if err != nil {
 		return nil, err
@@ -27,11 +29,12 @@ func scanFile(fpath, pattern string) ([]string, error) {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	scanner.Split(bufio.ScanLines)
-	result := make([]string, 0)
+	result := make([]ScanResult, 0)
+	var line_number int
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, pattern) {
-			result = append(result, line)
+			result = append(result, ScanResult{file:fpath, lineNumber:line_number, line:line})
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -56,7 +59,10 @@ func processFile(fpath string, pattern string) {
 		exit("Error scanning %s: %s", fpath, err.Error())
 	}
 	for _, line := range res {
-		fmt.Println(fpath+":", line)
+		if *lineCount == true{
+			fmt.Println(line.file+":"+strconv.Itoa(line.lineNumber)+":", line.line)
+		}
+		fmt.Println(line.file+":", line.line)
 	}
 }
 
