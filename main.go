@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -55,12 +56,20 @@ func processFile(fpath string, pattern string) {
 		exit("Error scanning %s: %s", fpath, err.Error())
 	}
 	for _, line := range res {
-		fmt.Println(line)
+		fmt.Println(fpath+":", line)
 	}
 }
 
-func processDirectory(dir string, pattern string) {
-
+func processDirectory(dir string, pattern string)  {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if info != nil && !info.IsDir(){
+			processFile(path, pattern)
+		}
+		return nil
+	})
+	if err != nil{
+		panic("Files error")
+	}
 }
 
 func main() {
