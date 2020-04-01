@@ -33,6 +33,7 @@ func scanFile(fpath, pattern string) ([]ScanResult, error) {
 	var line_number int
 	for scanner.Scan() {
 		line := scanner.Text()
+		line_number ++;
 		if strings.Contains(line, pattern) {
 			result = append(result, ScanResult{file:fpath, lineNumber:line_number, line:line})
 		}
