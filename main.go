@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 var (
 	recursiveFlag = flag.Bool("r", false, "recursive search: for directories")
-	lineCount = flag.Bool("n", false, "show line number")
+	lineCount     = flag.Bool("n", false, "show line number")
 )
 
 type ScanResult struct {
@@ -33,9 +33,9 @@ func scanFile(fpath, pattern string) ([]ScanResult, error) {
 	var line_number int
 	for scanner.Scan() {
 		line := scanner.Text()
-		line_number ++;
+		line_number++
 		if strings.Contains(line, pattern) {
-			result = append(result, ScanResult{file:fpath, lineNumber:line_number, line:line})
+			result = append(result, ScanResult{file: fpath, lineNumber: line_number, line: line})
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -54,27 +54,34 @@ func exit(format string, val ...interface{}) {
 	os.Exit(1)
 }
 
-func processFile(fpath string, pattern string) {
+func processFile(fpath string, pattern string, channel chan[]ScanResult) {
 	res, err := scanFile(fpath, pattern)
 	if err != nil {
 		exit("Error scanning %s: %s", fpath, err.Error())
 	}
-	for _, line := range res {
-		if *lineCount == true{
+	outputCoincidence(res)
+}
+
+func outputCoincidence(coincidences []ScanResult) {
+	for _, line := range coincidences {
+		if *lineCount == true {
 			fmt.Println(line.file+":"+strconv.Itoa(line.lineNumber)+":", line.line)
+		} else {
+			fmt.Println(line.file+":", line.line)
 		}
-		fmt.Println(line.file+":", line.line)
 	}
 }
 
-func processDirectory(dir string, pattern string)  {
+func processDirectory(dir string, pattern string) {
+	//finded := make([]ScanResult, 0)
+	channel := make(chan []ScanResult)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info != nil && !info.IsDir(){
-			processFile(path, pattern)
+		if info != nil && !info.IsDir() {
+			processFile(path, pattern, channel)
 		}
 		return nil
 	})
-	if err != nil{
+	if err != nil {
 		panic("Files error")
 	}
 }
@@ -102,6 +109,6 @@ func main() {
 	if info.IsDir() && recursive {
 		processDirectory(path, pattern)
 	} else {
-		processFile(path, pattern)
+		processFile(path, pattern, nil)
 	}
 }
