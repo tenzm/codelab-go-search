@@ -54,13 +54,19 @@ func exit(format string, val ...interface{}) {
 	os.Exit(1)
 }
 
-func processFile(fpath string, pattern string, channel chan[]ScanResult) {
+func processFileThread(fpath string, pattern string, channel chan[]ScanResult) {
+	res := processFile(fpath, pattern)
+	channel <- res
+}
+
+func processFile(fpath string, pattern string) []ScanResult {
 	res, err := scanFile(fpath, pattern)
 	if err != nil {
 		exit("Error scanning %s: %s", fpath, err.Error())
 	}
-	outputCoincidence(res)
+	return res
 }
+
 
 func outputCoincidence(coincidences []ScanResult) {
 	for _, line := range coincidences {
@@ -72,18 +78,30 @@ func outputCoincidence(coincidences []ScanResult) {
 	}
 }
 
-func processDirectory(dir string, pattern string) {
-	//finded := make([]ScanResult, 0)
+func processDirectory(dir string, pattern string) []ScanResult{
+	found := make([]ScanResult, 0)
 	channel := make(chan []ScanResult)
+
+	opened := 0
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if info != nil && !info.IsDir() {
-			processFile(path, pattern, channel)
+			opened += 1
+			go processFileThread(path, pattern, channel)
 		}
 		return nil
 	})
 	if err != nil {
 		panic("Files error")
 	}
+
+
+
+ 	for i := 0; i < opened; i++{
+		result := <-channel
+		found = append(found, result...)
+	}
+	return found
 }
 
 func main() {
@@ -107,8 +125,8 @@ func main() {
 	}
 
 	if info.IsDir() && recursive {
-		processDirectory(path, pattern)
+		outputCoincidence(processDirectory(path, pattern))
 	} else {
-		processFile(path, pattern, nil)
+		outputCoincidence(processFile(path, pattern))
 	}
 }
